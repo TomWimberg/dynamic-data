@@ -1,0 +1,9 @@
+Documentation is in README.md.
+
+Build using Maven - mvn
+
+Unit tests - mvn test
+
+Example program is under tom.dynamicdatabase.examples.BasicExample.java
+
+To run example program - mvn mvn exec:java -Dexec.mainClass=tom.dynamicdatabase.examples.BasicExample
