@@ -4,7 +4,7 @@ import java.util.List;
 
 import tom.dynamicdatabase.DBException;
 import tom.dynamicdatabase.DataObject;
-import tom.dynamicdatabase.Database;
+import tom.dynamicdatabase.DataStore;
 import tom.dynamicdatabase.TypeSystem;
 
 /**
@@ -46,30 +46,30 @@ public class BasicExample {
 	public static void main(String[] args) {
 		
 		// Create the address and person types
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore ds = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 			
 			// Create the types
-			createTypes(db);
+			createTypes(ds);
 			
 			// Create a couple of addresses
-			DataObject tomHomeAddress = createAddress(db, "100 Pine Street", "Westford", "MA", "01886");
-			DataObject tomWorkAddress = createAddress(db, "22 Main Street", "Nashua", "NH", "03060");
+			DataObject tomHomeAddress = createAddress(ds, "100 Pine Street", "Westford", "MA", "01886");
+			DataObject tomWorkAddress = createAddress(ds, "22 Main Street", "Nashua", "NH", "03060");
 			
 			// Create a coupld of persons - one with addresses, one without
-			createPerson(db, "Tom", "Wimberg", tomHomeAddress, tomWorkAddress);
-			createPerson(db, "Joan", "Smith", null, null);
+			createPerson(ds, "Tom", "Wimberg", tomHomeAddress, tomWorkAddress);
+			createPerson(ds, "Joan", "Smith", null, null);
 			
 			// Commit the database
-			db.commit();
+			ds.commit();
 			
 			// Now get all the persons - create a key without values to get all person objects
-			DataObject personKey = db.createDataObject(PERSON_TYPE_NAME);
-			List<DataObject> personObjectList = db.fetchDataObjects(personKey);
+			DataObject personKey = ds.createDataObject(PERSON_TYPE_NAME);
+			List<DataObject> personObjectList = ds.fetchDataObjects(personKey);
 			
 			// Display the persons that we created
 			System.out.println("Persons:");
 			for (DataObject personObject : personObjectList) {
-				displayPerson(db, personObject);
+				displayPerson(ds, personObject);
 			}
 			
 		} catch (DBException e) {
@@ -81,28 +81,28 @@ public class BasicExample {
 	/*
 	 * Create the address and person types
 	 */
-	private static void createTypes(Database db) throws DBException {
+	private static void createTypes(DataStore ds) throws DBException {
 
-		DataObject addressType = db.createType(ADDRESS_TYPE_NAME);
-		db.createProperty(addressType, ADDRESS_STREET,  TypeSystem.DATATYPE_STRING);
-		db.createProperty(addressType, ADDRESS_CITY, TypeSystem.DATATYPE_STRING);
-		db.createProperty(addressType, ADDRESS_STATE, TypeSystem.DATATYPE_STRING);
-		db.createProperty(addressType, ADDRESS_POSTAL_CODE, TypeSystem.DATATYPE_STRING);
+		DataObject addressType = ds.createType(ADDRESS_TYPE_NAME);
+		ds.createProperty(addressType, ADDRESS_STREET,  TypeSystem.DATATYPE_STRING);
+		ds.createProperty(addressType, ADDRESS_CITY, TypeSystem.DATATYPE_STRING);
+		ds.createProperty(addressType, ADDRESS_STATE, TypeSystem.DATATYPE_STRING);
+		ds.createProperty(addressType, ADDRESS_POSTAL_CODE, TypeSystem.DATATYPE_STRING);
 
-		DataObject personType = db.createType(PERSON_TYPE_NAME);
-		db.createProperty(personType, PERSON_FIRST_NAME, TypeSystem.DATATYPE_STRING);
-		db.createProperty(personType, PERSON_LAST_NAME, TypeSystem.DATATYPE_STRING);
-		db.createProperty(personType, PERSON_HOME_ADDRESS, ADDRESS_TYPE_NAME);
-		db.createProperty(personType, PERSON_WORK_ADDRESS, ADDRESS_TYPE_NAME);
+		DataObject personType = ds.createType(PERSON_TYPE_NAME);
+		ds.createProperty(personType, PERSON_FIRST_NAME, TypeSystem.DATATYPE_STRING);
+		ds.createProperty(personType, PERSON_LAST_NAME, TypeSystem.DATATYPE_STRING);
+		ds.createProperty(personType, PERSON_HOME_ADDRESS, ADDRESS_TYPE_NAME);
+		ds.createProperty(personType, PERSON_WORK_ADDRESS, ADDRESS_TYPE_NAME);
 
 	}
 	
 	/*
 	 * Create an address
 	 */
-	private static DataObject createAddress(Database db, String street, 
+	private static DataObject createAddress(DataStore ds, String street, 
 				String city, String state, String postalCode) throws DBException {
-		DataObject address = db.createDataObject(ADDRESS_TYPE_NAME);
+		DataObject address = ds.createDataObject(ADDRESS_TYPE_NAME);
 		address.setString(ADDRESS_STREET, street);
 		address.setString(ADDRESS_CITY, city);
 		address.setString(ADDRESS_STATE, state);
@@ -115,9 +115,9 @@ public class BasicExample {
 	/*
 	 * Create a person
 	 */
-	private static DataObject createPerson(Database db, String firstName, String lastName, 
+	private static DataObject createPerson(DataStore ds, String firstName, String lastName, 
 				DataObject homeAddress, DataObject workAddress) throws DBException {
-	 	DataObject person = db.createDataObject(PERSON_TYPE_NAME);
+	 	DataObject person = ds.createDataObject(PERSON_TYPE_NAME);
 	 	person.setString(PERSON_FIRST_NAME, firstName);
 	 	person.setString(PERSON_LAST_NAME, lastName);
 	 	person.setObject(PERSON_HOME_ADDRESS, homeAddress);
@@ -130,7 +130,7 @@ public class BasicExample {
 	/*
 	 * Display a person
 	 */
-	private static void displayPerson(Database db, DataObject personObject) throws DBException {
+	private static void displayPerson(DataStore ds, DataObject personObject) throws DBException {
 		System.out.printf("First name: %s, last name: %s\n", 
 				getNotNull(personObject.getString(PERSON_FIRST_NAME)),
 				getNotNull(personObject.getString(PERSON_LAST_NAME)));

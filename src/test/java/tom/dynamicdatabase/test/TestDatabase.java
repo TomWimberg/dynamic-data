@@ -8,7 +8,7 @@ import org.junit.Test;
 
 import tom.dynamicdatabase.DBException;
 import tom.dynamicdatabase.DataObject;
-import tom.dynamicdatabase.Database;
+import tom.dynamicdatabase.DataStore;
 import tom.dynamicdatabase.PropertyInfo;
 import tom.dynamicdatabase.TypeSystem;
 
@@ -61,12 +61,12 @@ public class TestDatabase {
 	private static final String PRINCE_LAST_NAME = "Prince";
 
 	/*
-	 * Error cases - Database methods 
+	 * Error cases - DataStore methods 
 	 */
 	
 	@Test
 	public void testOpenBadClass() {
-		try (Database db = Database.connect("tom.nosuchclass", DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore db = DataStore.open("tom.nosuchclass", DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 			fail("Bad class did not cause exception");
 		} catch (DBException e) {
 			// This is expected
@@ -75,7 +75,7 @@ public class TestDatabase {
 	
 	@Test
 	public void testOpenBadJDBCConnect() {
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, "baduser", "", true)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, "baduser", "", true)) {
 			fail("Bad username did not cause exception");
 		} catch (DBException e) {
 			// This is expected
@@ -84,7 +84,7 @@ public class TestDatabase {
 	
 	@Test
 	public void testReset() {
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 			db.reset();
 		} catch (DBException e) {
 			fail("Exception caught: " + e.toString());
@@ -93,7 +93,7 @@ public class TestDatabase {
 	
 	@Test
 	public void testCreateDataObjectNoSuchType() {
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 			try {
 				@SuppressWarnings("unused")
 				DataObject newObject = db.createDataObject(PERSON_TYPE_NAME);
@@ -108,7 +108,7 @@ public class TestDatabase {
 		
 	@Test
 	public void testSetStringBadPropertyName() {
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 			createAddressType(db);
 			createPersonType(db);
 			DataObject person = db.createDataObject(PERSON_TYPE_NAME);
@@ -125,7 +125,7 @@ public class TestDatabase {
 	
 	@Test
 	public void testSetStringBadPropertyDataType() {
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 			createAddressType(db);
 			createPersonType(db);
 			DataObject person = db.createDataObject(PERSON_TYPE_NAME);
@@ -145,7 +145,7 @@ public class TestDatabase {
 	 */
 	@Test
 	public void testSuccessful() {
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, true)) {
 
 			// Create the Address data type
 			createAddressType(db);
@@ -260,7 +260,7 @@ public class TestDatabase {
 		}
 
 		// Now try to see if we still have that data when we re-open the database
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, false)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, false)) {
 			
 			// There should now be two address objects and three person objects
 			DataObject addressKey = db.createDataObject(ADDRESS_TYPE_NAME);
@@ -284,7 +284,7 @@ public class TestDatabase {
 		}
 		
 		// Finally see if Joan is still there
-		try (Database db = Database.connect(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, false)) {
+		try (DataStore db = DataStore.open(DB_DRIVER_CLASS_NAME, DB_URL, DB_USER_NAME, DB_PASSWORD, false)) {
 			// Get Joan
 			DataObject joanKey = db.createDataObject(PERSON_TYPE_NAME);
 			joanKey.setString(PERSON_LAST_NAME, JOAN_LAST_NAME);
@@ -301,7 +301,7 @@ public class TestDatabase {
 	/*
 	 * Create an address data type
 	 */
-	private void createAddressType(Database db) throws DBException {
+	private void createAddressType(DataStore db) throws DBException {
 		DataObject addressType = db.createType(ADDRESS_TYPE_NAME);
 		db.createProperty(addressType, ADDRESS_STREET,  TypeSystem.DATATYPE_STRING);
 		db.createProperty(addressType, ADDRESS_CITY, TypeSystem.DATATYPE_STRING);
@@ -312,7 +312,7 @@ public class TestDatabase {
 	/*
 	 * Create a person data type with five properties - address type must be defined first
 	 */
-	private void createPersonType(Database db) throws DBException {
+	private void createPersonType(DataStore db) throws DBException {
 		DataObject personType = db.createType(PERSON_TYPE_NAME);
 		db.createProperty(personType, PERSON_FIRST_NAME, TypeSystem.DATATYPE_STRING);
 		db.createProperty(personType, PERSON_LAST_NAME, TypeSystem.DATATYPE_STRING);
@@ -323,7 +323,7 @@ public class TestDatabase {
 	/*
 	 * Create an address object
 	 */
-	private DataObject createAddress(Database db, String street, 
+	private DataObject createAddress(DataStore db, String street, 
 			String city, String state, String postalCode) throws DBException {
 		DataObject address = db.createDataObject(ADDRESS_TYPE_NAME);
 		address.setString(ADDRESS_STREET, street);
@@ -352,7 +352,7 @@ public class TestDatabase {
 	/*
 	 * Create a person object
 	 */
-	private DataObject createPerson(Database db, String firstName, String lastName, 
+	private DataObject createPerson(DataStore db, String firstName, String lastName, 
 			DataObject homeAddress, DataObject workAddress) throws DBException {
 	 	DataObject person = db.createDataObject(PERSON_TYPE_NAME);
 	 	person.setString(PERSON_FIRST_NAME, firstName);

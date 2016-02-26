@@ -10,35 +10,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 /**
- * This class is the entry into the dynamic database library.
+ * This class provides the SQL data store.
  * <p>
- * Use the static factory method Connect to get an instance of Database.
- * <p>
- * Use createType to create a new type for a data object and
- * createProperty to create properties for types.
- * <p>
- * Use the methods createDataObject to create new data objects based
- * on a type or
- * use fetchDataObjects or fetchDataObjectBYID 
- * to fetch data objects from the database.
- * <p>
- * The methods commit and rollback are used to commit or rollback the
- * current transaction.  Note that the database is always in a 
- * transaction and these methods must be used to commit or rollback
- * the transaction.  If commit is not used, then data will not
- * be persisted.
- * <p>
- * The reset method can be used to reinitialize a database.
- * <p>
- * When done, use the close method to close the database.
+ * This class has no public fields or methods.
  * 
  * @author Tom Wimberg
  *
  */
-public class Database implements AutoCloseable {
+public class Database {
 	
 	private static final String GET_NEXT_SEQUENCE_VALUE =
 		"select data_sequence.nextval from dual";
@@ -88,7 +69,7 @@ public class Database implements AutoCloseable {
 	 * @return					The database object
 	 * @throws DBException
 	 */
-	public static Database connect(String driverClassName, 
+	static Database connect(String driverClassName, 
 			String dbUrl, String dbUserName, String dbPassword, boolean reset) throws DBException {
 		Database db = new Database();
 		try {
@@ -105,12 +86,6 @@ public class Database implements AutoCloseable {
 				InitializeDatabase.reset(db.con);
 			}
 			
-			// Get a type system
-			db.typeSystem = new TypeSystem(db);
-			
-			// Read in user-defined types
-			db.typeSystem.readUserTypes();
-			
 		} catch (Exception e) {
 			if (db.con != null) {
 				db.close();
@@ -118,6 +93,10 @@ public class Database implements AutoCloseable {
 			throw new DBException("Exception in connecting to database", e);
 		}
 		return db;
+	}
+	
+	void setTypeSystem (TypeSystem typeSystem) {
+		this.typeSystem = typeSystem;
 	}
 	
 	/*
@@ -130,64 +109,20 @@ public class Database implements AutoCloseable {
 	 * @return					True if success, false if not
 	 * @throws DBException
 	 */
-	public void reset() throws DBException {
+	void reset() throws DBException {
 		if (con == null) {
 			throw new DBException("Connection closed");
 		}
 		InitializeDatabase.reset(con);
 	}
-	
-	/**
-	 * Get all type names currently legal in the database
-	 * @return		A list of all type names
-	 */
-	public List<String> getTypeNames() {
-		return typeSystem.getTypeList()
-				.stream()
-				.map(to -> to.getString(TypeSystem.TYPE_PROPERTY_NAME))
-				.collect(Collectors.toList());
-	}
-	
-	/**
-	 * Get information about properties for a type
-	 * @param typeName	The type name
-	 * @return			A list of PropertyInfo objects
-	 */
-	public List<PropertyInfo> getPropertiesForType(String typeName) {
-		return typeSystem.getPropertyListByTypeName(typeName)
-				.stream()
-				.map(po -> new PropertyInfo(po.getString(TypeSystem.PROPERTY_PROPERTY_NAME),
-											po.getString(TypeSystem.PROPERTY_PROPERTY_TYPE)))
-				.collect(Collectors.toList());
-	}
-
-	/**
-	 * Create a new database object
-	 * @param typeName			The name of the database object type
-	 * @return					The type or null if no such type name
-	 * @throws DBException
-	 */
-	public DataObject createDataObject(String typeName) throws DBException {
-
-		if (con == null) {
-			throw new DBException("Connection closed");
-		}
-
-		DataObject typeObject = typeSystem.getTypeByName(typeName);
-		if (typeObject == null) {
-			throw new DBException("No such type: " + typeName);
-		}
-		DataObject newObject = new DataObject(this, typeSystem, typeObject, false);
-		return newObject;
-	}
-	
-	/**
+		
+	/*
 	 * Fetch a list of database objects by key values
 	 * @param key				A DataObject with values partially filled in
 	 * @return					A List of DataObject objects that match the provided keys
 	 * @throws DBException
 	 */
-	public List<DataObject> fetchDataObjects(DataObject key) throws DBException {
+	List<DataObject> fetchDataObjects(DataObject key) throws DBException {
 		
 		if (con == null) {
 			throw new DBException("Connection closed");
@@ -282,13 +217,13 @@ public class Database implements AutoCloseable {
 		return dataObject;
 	}
 	
-	/**
+	/*
 	 * Fetch a data object from the database using the object id.
 	 * @param objectId			The object id to fetch
 	 * @return					The DataObject or null if no such object or error
 	 * @throws DBException
 	 */
-	public DataObject fetchDataObjectById(long objectId) throws DBException {
+	DataObject fetchDataObjectById(long objectId) throws DBException {
 
 		if (con == null) {
 			throw new DBException("Connection closed");
@@ -462,14 +397,14 @@ public class Database implements AutoCloseable {
 		}
 	}
 
-	/**
+	/*
 	 * Commit the current transaction
 	 * <p>
 	 * Note that the database is not run in auto-commit mode.
 	 * @return					True if successful, false if not
 	 * @throws DBException
 	 */
-	public void commit() throws DBException {
+	void commit() throws DBException {
 
 		if (con == null) {
 			throw new DBException("Connection closed");
@@ -482,14 +417,14 @@ public class Database implements AutoCloseable {
 		}
 	}
 	
-	/**
+	/*
 	 * Rollback the current transaction
 	 * <p>
 	 * Note that the database is not run in auto-commit mode
 	 * @return					True if successful, false if not
 	 * @throws DBException
 	 */
-	public void rollback() throws DBException {
+	void rollback() throws DBException {
 		
 		if (con == null) {
 			throw new DBException("Connection closed");
@@ -502,12 +437,12 @@ public class Database implements AutoCloseable {
 		}
 	}
 	
-	/**
+	/*
 	 * Close the database
 	 * @return					True if successful, false if not
 	 * @throws DBException
 	 */
-	public void close() throws DBException {
+	void close() throws DBException {
 		
 		if (con == null) {
 			throw new DBException("Connection closed");
@@ -569,42 +504,4 @@ public class Database implements AutoCloseable {
 		}
 	}
 	
-
-	/**
-	 * Create a Type object and persist it.  This is a convenience method.
-	 * <p>
-	 * This should be in the TypeSystem class, but there is no good way to get to the
-	 * type system object at this time.
-	 * @param typeName			The name of the new type
-	 * @return					The newly created Type object
-	 * @throws DBException
-	 */
-	public DataObject createType(String typeName) throws DBException {
-		DataObject newType = createDataObject(TypeSystem.TYPE_TYPE_NAME);
-		newType.setString(TypeSystem.TYPE_PROPERTY_NAME, typeName);
-		newType.persist(); // To get type ID
-		return newType;
-	}
-	
-	/**
-	 * Create a Property object and persist it.  This is a convenience method.
-	 * <p>
-	 * This should be in the TypeSystem class, but there is no good way to get to the
-	 * type system object at this time.
-	 * @param typeObject		The type object for which to create the property
-	 * @param propertyName		The name of the new property
-	 * @param dataType			The data type - "String" or a Type name
-	 * @return					The newly create Property object
-	 * @throws DBException
-	 */
-	public DataObject createProperty(DataObject typeObject, 
-			String propertyName, String dataType) throws DBException {
-		DataObject newProperty = createDataObject(TypeSystem.PROPERTY_TYPE_NAME);
-		newProperty.setObject(TypeSystem.PROPERTY_PROPERTY_OWNER, typeObject);
-		newProperty.setString(TypeSystem.PROPERTY_PROPERTY_NAME, propertyName);
-		newProperty.setString(TypeSystem.PROPERTY_PROPERTY_TYPE, dataType);
-		newProperty.persist();
-		return newProperty;
-	}
-
 }

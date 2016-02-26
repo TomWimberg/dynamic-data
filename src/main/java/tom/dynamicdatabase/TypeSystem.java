@@ -85,7 +85,7 @@ public class TypeSystem {
 	private Map<Long, Map<Long, DataObject>> propertyMapByTypePropertyIds =	new HashMap<Long, Map<Long, DataObject>>();
 	
 	// The database object
-	private Database db = null;
+	private DataStore ds = null;
 	
 	/*
 	 * Return the list of all known types
@@ -230,10 +230,10 @@ public class TypeSystem {
 	/*
 	 * Constructor - this initializes the type system - only used by db
 	 */
-	TypeSystem(Database db) {
+	TypeSystem(DataStore ds) {
 		
 		// Set db link
-		this.db = db;
+		this.ds = ds;
 		
 		// Create the type and property objects
 		DataObject typeObject = bootstrapCreateType(TYPE_TYPE_ID, TYPE_TYPE_NAME);
@@ -254,7 +254,7 @@ public class TypeSystem {
 	private DataObject bootstrapCreateType(long typeId, String typeName) {
 				
 		// Create type object using a null type since we have not set properties for types yet
-		DataObject typeObject = new DataObject(db, this, null, true);
+		DataObject typeObject = new DataObject(ds.db, this, null, true);
 		typeObject.setId(typeId);
 		
 		// Handle bootstraping the Type base type
@@ -276,7 +276,7 @@ public class TypeSystem {
 	private DataObject bootstrapCreateProperty(DataObject typeObject, String typeName, long propertyId, String propertyName, String dataType) {
 
 		// Create property object using a null type to handle bootstrap
-		DataObject propertyObject = new DataObject(db, this, null, true);
+		DataObject propertyObject = new DataObject(ds.db, this, null, true);
 		DataObject basePropertyTypeObject = typeMapByMetadataID.get(PROPERTY_TYPE_ID);
 		propertyObject.setTypeInfo(PROPERTY_TYPE_ID, PROPERTY_TYPE_NAME, basePropertyTypeObject);
 		propertyObject.setId(propertyId);
@@ -294,8 +294,8 @@ public class TypeSystem {
 	 */
 	void readUserTypes() throws DBException {
 		// Now that basic type system is initialized, read user-defined data types and properties
-		DataObject typeKey = db.createDataObject(TYPE_TYPE_NAME);
-		List<DataObject> typeList = db.fetchDataObjects(typeKey);
+		DataObject typeKey = ds.createDataObject(TYPE_TYPE_NAME);
+		List<DataObject> typeList = ds.fetchDataObjects(typeKey);
 		for (DataObject dbTypeObject : typeList) {
 			// Add type to type system as long as it is not one of the base types
 			if (dbTypeObject.getId() > 99) {
@@ -303,8 +303,8 @@ public class TypeSystem {
 			}
 		}
 		
-		DataObject propertyKey = db.createDataObject(PROPERTY_TYPE_NAME);
-		List<DataObject> propertyList = db.fetchDataObjects(propertyKey);
+		DataObject propertyKey = ds.createDataObject(PROPERTY_TYPE_NAME);
+		List<DataObject> propertyList = ds.fetchDataObjects(propertyKey);
 		for (DataObject dbPropertyObject : propertyList) {
 			// Add property to type system as long as it is not one of the base properties
 			if (dbPropertyObject.getId() > 99) {
