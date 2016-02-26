@@ -4,6 +4,10 @@ This was originally done as a proof of concept to see if a system could be creat
 
 There is an example program in the tom.dynamicdatabase.examples package.
 
+This project uses Maven to build.  The unit tests can be run using `maven test`.  The example program can be run using:
+ 
+    mvn exec:java -Dexec.mainClass=tom.dynamicdatabase.examples.BasicExample
+
 The general order of operations is:
 * Use DataStore.open to open a data store - the current system is configured to use H2 - this returns a DataStore object
 * Use createType and createProperty on the DataStore object to create new object types and properties for those object types - these return type DataObject objects and property DataObject objects.  
