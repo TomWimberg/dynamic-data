@@ -1,27 +1,30 @@
 # dynamic-data
 This project is a test project of mine that provides dynamic object creation within an SQL database.
+This was originally done as a proof of concept to see if a system could be created that would allow extra data to be stored in the same transaction as normal static data.  This required that the extra data be stored dynamically in a set of SQL tables.
+
+There is an example program in the tom.dynamicdatabase.examples package.
 
 The general order of operations is:
-* Use Database.connect to connect to database - the current system is configured to use H2 - this returns a Database object
-* Use createType and createProperty on the Database object to create new object types and properties for those object types - these return type DataObject objects and property DataObject objects.  
-* Use createDataObject, fetchDataObjects, or fetchObjectById on the Database object to create
+* Use DataStore.open to open a data store - the current system is configured to use H2 - this returns a DataStore object
+* Use createType and createProperty on the DataStore object to create new object types and properties for those object types - these return type DataObject objects and property DataObject objects.  
+* Use createDataObject, fetchDataObjects, or fetchObjectById on the DataStore object to create
 new objects, fetch a set of objects from the database by key, or fetch a data object by its object id - all of these methods return a DataObject object
 * Use the DataObject which will have the properties that have been defined for it
   - setString/setObject/setObjectId to set the values of properties of a DataObject
   - getString/getObject/getObjectId to get values of properties of a DataObject
   - persist to store a data object to the database (this includes updates)
   - delete to delete a data object from the database 
-* Use the commit and rollback methods on the Database object to commit and rollback the database transaction
-* Use the close method on the Database object to close the database connection - note that the Database object does implement the AutoCloseable interface so that the try with resources pattern can be used
+* Use the commit and rollback methods on the DataStore object to commit and rollback the database transaction
+* Use the close method on the DataStore object to close the database connection - note that the DataStore class does implement the AutoCloseable interface so that the try with resources pattern can be used
 
 ## DBException
 Almost all static and object methods raise DBException if they encounter an error.
 
-## Database Object
-The top level object is the Database object.
+## DataStore Object
+The top level object is the DataStore object.
 
-### Database.connect
-You use the Database.connect static factory method to get a Database object and establish a connection to a SQL database.  
+### DataStore.open
+You use the DataStore.open static factory method to get a DataStore object and establish a connection to an SQL database.  
 
 This method takes the following parameters:
 * driverClassName - String - this is the name of the JDBC driver class to use to connect to the database
@@ -29,24 +32,24 @@ This method takes the following parameters:
 * dbUserName - String - the username to pass to the JDBC connect method
 * dbPassword - String - the password to pass to the JDBC connect method
 * reset - boolean - whether or not to initialize/reset the database - this must be set to true on initial opening of a database - this will create the required tables and metadata
-This method returns a Database object.
+This method returns a DataStore object.
 
-Note that the JDBC connection is set with auto commit turned off so you have to use the commit method to make database changes permanent.  A database transaction is started when the Database object is created.
+Note that the JDBC connection is set with auto commit turned off so you have to use the commit method to make data store changes permanent.  A transaction is started when the DataStore object is created.
 
 ### close
-The Database object implements the AutoClosable interface so it can be used with try with resources Java construct.  
+The DataStore object implements the AutoClosable interface so it can be used with try with resources Java construct.  
 
 You can also use the close object method to close the JDBC connection.
 
 This method takes no parameters and returns void.
 
 ### commit
-This object method commits the current database transaction and starts a new one.
+This object method commits the current transaction and starts a new one.
 
 This method takes no parameters and returns void.
 
 ### rollback
-This object method rolls back the current database transaction and starts a new one.  This means that all database changes (via DataObject persist and delete methods) since the last commit or rollback (or Database object creation if no commits or rollbacks have been done) are undone. 
+This object method rolls back the current database transaction and starts a new one.  This means that all database changes (via DataObject persist and delete methods) since the last commit or rollback (or DataStore object creation if no commits or rollbacks have been done) are undone. 
 
 This method takes no parameters and returns void.
 
@@ -142,7 +145,7 @@ If this method is called for a property that has a data type of String or for an
 ### getObjectId
 This object method gets object IDs for property values that are not Strings from data objects.
 
-This method can be used to determine whether or not a property that is a Type has a value without causing the sytem to actully fetch that property.  If later the actual object is wanted, then fetchDataObjectById can be called on the Database object.
+This method can be used to determine whether or not a property that is a Type has a value without causing the sytem to actully fetch that property.  If later the actual object is wanted, then fetchDataObjectById can be called on the DataStore object.
 
 This method takes the following parameter:
 * propertyName - String - the name of the property
@@ -171,7 +174,7 @@ This method returns void.
 If this method is called for a property that has a data type of String or for an unknown property, a DBException is raised.
 
 ### persist
-This object method persists a data object.  If this object was created using the Database createObject  method then a new object is stored in the database.  This store operation will assign an object ID to the object.  If this object was read from the database, then the object will be updated (currently deleted then stored in the current implementation).
+This object method persists a data object.  If this object was created using the DataStore createObject  method then a new object is stored in the database.  This store operation will assign an object ID to the object.  If this object was read from the data store, then the object will be updated (currently deleted then stored in the current implementation).
 
 This method takes no parameters and returns void.
 
