@@ -1,6 +1,5 @@
 package tom.dynamicdatabase;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -132,7 +131,7 @@ public class DataStore implements AutoCloseable {
 
 		return typeSystem.getTypeList()
 				.stream()
-				.map(to -> to.getString(TypeSystem.TYPE_PROPERTY_NAME))
+				.map(to -> to.getString(TypeSystem.TYPE_PROPERTY_NAME_ID))
 				.collect(Collectors.toList());
 	}
 	
@@ -149,10 +148,11 @@ public class DataStore implements AutoCloseable {
 
 		return typeSystem.getPropertyListByTypeName(typeName)
 				.stream()
-				.map(po -> new PropertyInfo(po.getString(TypeSystem.PROPERTY_PROPERTY_NAME),
-											po.getString(TypeSystem.PROPERTY_PROPERTY_TYPE)))
+				.map(po -> new PropertyInfo(po.getString(TypeSystem.PROPERTY_PROPERTY_NAME_ID),
+											po.getString(TypeSystem.PROPERTY_PROPERTY_TYPE_ID)))
 				.collect(Collectors.toList());
 	}
+	
 	/**
 	 * Create a Type object and persist it.
 	 * <p>

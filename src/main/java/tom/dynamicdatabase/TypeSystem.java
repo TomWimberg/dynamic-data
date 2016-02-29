@@ -262,7 +262,7 @@ public class TypeSystem {
 		
 		// Set the rest of the type information
 		typeObject.setTypeInfo(TYPE_TYPE_ID, TYPE_TYPE_NAME, baseTypeType);
-		typeObject.setString(TYPE_PROPERTY_NAME, TYPE_PROPERTY_NAME_ID, typeName);
+		typeObject.setString(TYPE_PROPERTY_NAME_ID, typeName);
 		
 		// Add type to type system
 		addType(typeObject, typeName, typeId);
@@ -280,9 +280,9 @@ public class TypeSystem {
 		DataObject basePropertyTypeObject = typeMapByMetadataID.get(PROPERTY_TYPE_ID);
 		propertyObject.setTypeInfo(PROPERTY_TYPE_ID, PROPERTY_TYPE_NAME, basePropertyTypeObject);
 		propertyObject.setId(propertyId);
-		propertyObject.setObject(PROPERTY_PROPERTY_OWNER, PROPERTY_PROPERTY_OWNER_ID, typeObject.getId(), typeObject);
-		propertyObject.setString(PROPERTY_PROPERTY_NAME, PROPERTY_PROPERTY_NAME_ID, propertyName);
-		propertyObject.setString(PROPERTY_PROPERTY_TYPE, PROPERTY_PROPERTY_TYPE_ID, dataType);
+		propertyObject.setObject(PROPERTY_PROPERTY_OWNER_ID, typeObject.getId(), typeObject);
+		propertyObject.setString(PROPERTY_PROPERTY_NAME_ID, propertyName);
+		propertyObject.setString(PROPERTY_PROPERTY_TYPE_ID, dataType);
 		addProperty(typeObject, propertyObject, typeName, propertyName);
 		return propertyObject;
 		

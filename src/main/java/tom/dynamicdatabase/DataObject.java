@@ -38,19 +38,19 @@ public class DataObject {
 	private TypeSystem typeSystem;			// The type system to which this object is attached
 	private boolean dbObject = false;		// Is this object in the database?
 	
-	// Maps of String values - by property name and by property ID
-	private Map<String, String> stringValueMapByName = new HashMap<>();
-	private Map<Long, String> stringValueMapById = new HashMap<>();
-	private Set<Entry<Long, String>> stringValueEntries = stringValueMapById.entrySet();
+	// Maps of String values
+	private Map<Long, String> stringValueMap = new HashMap<>();
+	private Set<Entry<Long, String>> stringValueEntries = stringValueMap.entrySet();
 	
-	// Maps of Object ID values - by property name and by property ID
-	private Map<String, Long> objectIdValueMapByName = new HashMap<>();
-	private Map<Long, Long> objectIdValueMapById = new HashMap<>();
-	private Set<Entry<Long, Long>> objectIdValueEntries = objectIdValueMapById.entrySet();
+	// Maps of Object ID values
+	private Map<Long, Long> objectIdValueMap = new HashMap<>();
+	private Set<Entry<Long, Long>> objectIdValueEntries = objectIdValueMap.entrySet();
+	
+	// Keep track of which values have been updated - populated lazily - false assumed
+	private Map<Long, Boolean> modifiedValuedMap = new HashMap<>();
 	
 	// These value maps are populated lazily when requested (for the most part)
-	private Map<String, DataObject> objectValueMapByName = new HashMap<>();
-	private Map<Long, DataObject> objectValueMapById = new HashMap<>();
+	private Map<Long, DataObject> objectValueMap = new HashMap<>();
 	
 	/**
 	 * Constructor - for use by the DB and type system
@@ -62,7 +62,7 @@ public class DataObject {
 			// Will be null in bootstrap
 			this.typeObject = typeObject;
 			this.typeId = typeObject.getId();
-			this.typeName = typeObject.getString(TypeSystem.TYPE_PROPERTY_NAME);
+			this.typeName = typeObject.getString(TypeSystem.TYPE_PROPERTY_NAME_ID);
 		}
 		this.dbObject = dbObject;
 	}
@@ -119,9 +119,9 @@ public class DataObject {
 	/*
 	 * Set a string value - for db and type system only - this is not checked for valid types
 	 */
-	void setString(String valueName, long id, String value) {
-		stringValueMapByName.put(valueName, value);
-		stringValueMapById.put(id, value);
+	void setString(long id, String value) {
+		stringValueMap.put(id, value);
+		modifiedValuedMap.put(id, true);
 	}
 	
 	/**
@@ -132,10 +132,14 @@ public class DataObject {
 	 * @throws DBException
 	 */
 	public void setString(String propertyName, String value) throws DBException {
+		
+		// Make sure this is a valid property
 		DataObject property = typeSystem.getPropertyByNames(typeName, propertyName);
 		if (property == null) {
 			throw new DBException("No such property");
 		}
+		
+		// Make sure the data type is correct
 		if (!property.getString(TypeSystem.PROPERTY_PROPERTY_TYPE_ID).equals(TypeSystem.DATATYPE_STRING)) {
 			throw new DBException("Data type mismatch");
 		}
@@ -148,49 +152,29 @@ public class DataObject {
 		
 		// Only set data if value is not null
 		if (value != null) {
-			stringValueMapByName.put(propertyName, value);
-			stringValueMapById.put(property.getId(), value);			
+			setString(property.getId(), value);			
 		}
 		
 	}
 	
-	/**
-	 * Set a string value by property ID - this checks for valid property ID and data type
-	 * @param propertyId		The property ID
-	 * @param value				The value - can be null (null values are not stored)
-	 * @return					True if successful, false if no such property or wrong data type
-	 * @throws DBException
+	/*
+	 * Set a string value by property ID - internal only - this does not check valid properties and types 
 	 */
-	public void setString(Long propertyId, String value) throws DBException {
-		DataObject property = typeSystem.getPropertyByIds(typeId, propertyId);
-		if (property == null) {
-			throw new DBException("No such property");
-		}
-		if (!property.getString(TypeSystem.PROPERTY_PROPERTY_TYPE_ID).equals(TypeSystem.DATATYPE_STRING)) {
-			throw new DBException("Data type mismatch");
-		}
-		if (typeId == TypeSystem.PROPERTY_TYPE_ID && propertyId == TypeSystem.PROPERTY_PROPERTY_TYPE_ID) {
-			// This is setting a data type for a property - test for valid values - TODO - do this cleanly
-			if (!typeSystem.checkDataType(value)) {
-				throw new DBException("Unknown data type");
-			}
-		}
+	void setString(Long propertyId, String value) throws DBException {
 		
 		// Only save value if it is not null
 		if (value != null) {
-			stringValueMapByName.put(property.getString(TypeSystem.PROPERTY_PROPERTY_NAME_ID), value);
-			stringValueMapById.put(propertyId, value);			
+			setString(propertyId, value);			
 		}
 	}
 	
 	/*
-	 * Set an object - id and object - for bootstrap only - this is not checked for valid types
+	 * Set an object - id and object - internal only - this is not checked for valid types
 	 */
-	void setObject(String propertyName, long propertyId, long valueId, DataObject value) {
-		objectIdValueMapByName.put(propertyName, valueId);
-		objectIdValueMapById.put(propertyId, valueId);
-		objectValueMapByName.put(propertyName, value);
-		objectValueMapById.put(propertyId, value);
+	void setObject(long propertyId, long valueId, DataObject value) {
+		objectIdValueMap.put(propertyId, valueId);
+		objectValueMap.put(propertyId, value);
+		modifiedValuedMap.put(propertyId, true);
 	}
 
 	/**
@@ -201,6 +185,8 @@ public class DataObject {
 	 * @throws DBException
 	 */
 	public void setObject(String propertyName, DataObject value) throws DBException {
+		
+		// Check for correct property type
 		DataObject property = typeSystem.getPropertyByNames(typeName, propertyName);
 		if (property == null) {
 			throw new DBException("No such property");
@@ -213,12 +199,7 @@ public class DataObject {
 				throw new DBException("Data type mismatch");
 			}
 			
-			long propertyId = property.getId();
-			long valueId = value.getId();
-			objectIdValueMapByName.put(propertyName, valueId);
-			objectIdValueMapById.put(propertyId, valueId);
-			objectValueMapByName.put(propertyName, value);
-			objectValueMapById.put(propertyId, value);			
+			setObject(property.getId(), value.getId(), value);
 		}
 	}
 	
@@ -226,6 +207,8 @@ public class DataObject {
 	 * Set an object property value by property ID - this checks for legal property ID and value type
 	 */
 	void setObject(long propertyId, DataObject value) throws DBException {
+		
+		// Check for correct property type
 		DataObject property = typeSystem.getPropertyByIds(typeId, propertyId);
 		if (property == null) {
 			throw new DBException("No such property");
@@ -238,64 +221,87 @@ public class DataObject {
 				throw new DBException("Data type mismatch");
 			}
 
-			long valueId = value.getId();
-			String propertyName = property.getString(TypeSystem.PROPERTY_PROPERTY_NAME);
-			objectIdValueMapByName.put(propertyName, valueId);
-			objectIdValueMapById.put(propertyId, valueId);
-			objectValueMapByName.put(propertyName, value);
-			objectValueMapById.put(propertyId, value);			
+			setObject(property.getId(), value.getId(), value);
 		}
 	}
 
 	/*
 	 * Set object ID by property ID - used by db only
 	 */
-	void setObjectId(long propertyId, long valueId) throws DBException {
-		DataObject property = typeSystem.getPropertyByIds(typeId, propertyId);
-		if (property == null) {
-			throw new DBException("No such property");
-		}
-
-		String propertyName = property.getString(TypeSystem.PROPERTY_PROPERTY_NAME);
-
-		objectIdValueMapByName.put(propertyName, valueId);
-		objectIdValueMapById.put(propertyId, valueId);
+	void setObjectId(long propertyId, long valueId) {
+		objectIdValueMap.put(propertyId, valueId);
+		modifiedValuedMap.put(propertyId, true);
+	}
+	
+	/*
+	 * Return a string value by property ID - internal use only - no checks
+	 */
+	String getString(Long propertyId) {
+		return stringValueMap.get(propertyId);
 	}
 	
 	/**
 	 * Return a String value by property name
 	 * @param propertyName		The name of the property
-	 * @return					The value or null if no value by that name
+	 * @return					The value or null if no value
+	 * @throws DBException
 	 */
-	public String getString(String propertyName) {
-		return stringValueMapByName.get(propertyName);
+	public String getString(String propertyName) throws DBException {
+
+		// Make sure this is a valid property
+		DataObject property = typeSystem.getPropertyByNames(typeName, propertyName);
+		if (property == null) {
+			throw new DBException("No such property");
+		}
+
+		return getString(property.getId());
+
 	}
 	
-	/**
-	 * Return a string value by property ID
-	 * @param propertyId		The ID of the property
-	 * @return					The value or null if no value by that ID
+	/*
+	 * Get an object ID by property ID - internal use only - no checks
 	 */
-	public String getString(Long propertyId) {
-		return stringValueMapById.get(propertyId);
+	Long getObjectId(long propertyId) {
+		return objectIdValueMap.get(propertyId);
 	}
 	
 	/**
 	 * Get an object ID by property name
 	 * @param propertyName		The name of the property
 	 * @return					The object ID or null if no object value by that name
+	 * @throws DBException
 	 */
-	public Long getObjectId(String propertyName) {
-		return objectIdValueMapByName.get(propertyName);
+	public Long getObjectId(String propertyName) throws DBException {
+		
+		// Make sure this is a valid property
+		DataObject property = typeSystem.getPropertyByNames(typeName, propertyName);
+		if (property == null) {
+			throw new DBException("No such property");
+		}
+		
+		return getObjectId(property.getId());
 	}
 	
 	/**
-	 * Get an object ID by property ID
-	 * @param propertyId		The ID of the property
-	 * @return					The object ID or null if no object value by that ID
+	 * Get an object value by property id - internal use only - minimal checks
 	 */
-	public Long getObjectId(long propertyId) {
-		return objectIdValueMapById.get(propertyId);
+	DataObject getObject(long propertyId) throws DBException {
+
+		// See if object ID value exists
+		Long objectId = getObjectId(propertyId);
+		if (objectId == null) {
+			return null;
+		}
+		
+		// Object value exists - fetch if we don't already have
+		DataObject returnObject = objectValueMap.get(propertyId);
+		if (returnObject == null) {
+			// Get object and save it
+			returnObject = db.fetchDataObjectById(objectId);
+			setObject(propertyId, returnObject);
+		}
+		
+		return returnObject;
 	}
 	
 	/**
@@ -308,47 +314,14 @@ public class DataObject {
 	 * @throws DBException
 	 */
 	public DataObject getObject(String propertyName) throws DBException {
-		// See if property exists - avoids extra db fetches
-		Long objectId = getObjectId(propertyName);
-		if (objectId == null) {
-			return null;
+
+		// Make sure this is a valid property
+		DataObject property = typeSystem.getPropertyByNames(typeName, propertyName);
+		if (property == null) {
+			throw new DBException("No such property");
 		}
 		
-		// Object exists - see if we already have object
-		DataObject returnObject = objectValueMapByName.get(propertyName);
-		if (returnObject == null) {
-			// Get object and save it
-			returnObject = db.fetchDataObjectById(objectId);
-			setObject(propertyName, returnObject);
-		}
-		return returnObject;
-	}
-	
-	/**
-	 * Get an object value by property name - this may cause a database fetch
-	 * <p>
-	 * Property IDs are not checked for validity - a bad property ID will
-	 * return a null value
-	 * @param propertyId		The ID of the property
-	 * @return					The object or null if no object
-	 * @throws DBException
-	 */
-	public DataObject getObject(long propertyId) throws DBException {
-		// TODO consolidate this with by name
-		// See if property exists - avoids extra db fetches
-		Long objectId = getObjectId(propertyId);
-		if (objectId == null) {
-			return null;
-		}
-		
-		// Object exists - see if we already have object
-		DataObject returnObject = objectValueMapById.get(propertyId);
-		if (returnObject == null) {
-			// Get object and save it
-			returnObject = db.fetchDataObjectById(objectId);
-			setObject(propertyId, returnObject);
-		}
-		return returnObject;
+		return getObject(property.getId());
 	}
 	
 	/*
@@ -377,15 +350,16 @@ public class DataObject {
 			throw new DBException("Attempt to persist built-in type or property");
 		}
 		
-		// For now implement update by deleting existing object first
+		// Is this object alread in the database?
 		if (dbObject) {
-			db.deleteObject(this);  // Delete any object - ignore errors for now - TODO implement better update
-		} 
-			
-		// Store object 		
-		db.storeObject(this);
+			// If so, update the object
+			db.updateObject(this);
+		} else {			
+			// Store object 		
+			db.storeObject(this);
+		}
 		
-		// Mark object as in database
+		// Mark object as being in database
 		dbObject = true;
 		
 		// Check for type definitions
@@ -396,7 +370,39 @@ public class DataObject {
 		// Check for property definitions
 		if (typeId == TypeSystem.PROPERTY_TYPE_ID) {
 			typeSystem.addProperty(this);
-		}		
+		}
+		
+		// Delete modified map - all values have been persisted
+		modifiedValuedMap = new HashMap<>();
+	}
+	
+	/*
+	 * Return whether or not a property has been modified since last persisted.
+	 * This is for internal use only.
+	 */
+	boolean isModified(long propertyId) {
+		Boolean returnValue = this.modifiedValuedMap.get(propertyId);
+		if (returnValue == null) {
+			return false;
+		}
+		return returnValue;
+	}
+	
+	/**
+	 * Return whether or not a property value has been modified since last persisted.
+	 * @param propertyName
+	 * @return
+	 * @throws DBException
+	 */
+	public boolean isModified(String propertyName) throws DBException {
+
+		// Make sure this is a valid property
+		DataObject property = typeSystem.getPropertyByNames(typeName, propertyName);
+		if (property == null) {
+			throw new DBException("No such property");
+		}
+		
+		return isModified(property.getId());
 	}
 	
 	/**

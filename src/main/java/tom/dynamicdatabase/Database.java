@@ -45,6 +45,10 @@ public class Database {
 		"SELECT metadata_id, data FROM value_string WHERE object_id = ?";
 	private static final String SELECT_PROPERTY_OBJECT_SQL_BY_ID =
 		"SELECT metadata_id, data FROM value_object WHERE object_id = ?";
+	private static final String UPDATE_PROPERTY_STRING_SQL = 
+		"UPDATE value_string SET data = ? WHERE object_id = ? and metadata_id = ?";
+	private static final String UPDATE_PROPERTY_OBJECT_SQL = 
+		"UPDATE value_object SET data = ? WHERE object_id = ? and metadata_id = ?";
 	private static final String DELETE_OBJECT_BY_ID_SQL =
 		"DELETE FROM object WHERE id = ?";
 	private static final String DELETE_VALUE_STRING_BY_ID_SQL =
@@ -207,7 +211,7 @@ public class Database {
 	/*
 	 * Common code to create a data object on the first data value found
 	 */
-	private DataObject getOrCreateObject(Map<Long, DataObject> dataObjectMap, long objectId, DataObject key) {
+	private DataObject getOrCreateObject(Map<Long, DataObject> dataObjectMap, long objectId, DataObject key) throws DBException {
 		DataObject dataObject = dataObjectMap.get(objectId);
 		if (dataObject == null) {
 			dataObject = new DataObject(this, this.typeSystem, key.getType(), true);
@@ -283,7 +287,7 @@ public class Database {
 	 * @return				True if successful, false otherwise
 	 * @throws DBException
 	 */
-	protected void storeObject(DataObject object) throws DBException {
+	void storeObject(DataObject object) throws DBException {
 		
 		if (con == null) {
 			throw new DBException("Connection closed");
@@ -338,10 +342,52 @@ public class Database {
 					valuePs.setLong(3, value);
 					valuePs.execute();
 				} catch (SQLException e) {
-					throw new DBException("Exception on store String value", e);
+					throw new DBException("Exception on store Object value", e);
 				}
 			}
 		}		
+	}
+	
+	/*
+	 * Update an object already in the database
+	 */
+	void updateObject(DataObject dataObject) throws DBException {
+
+		if (con == null) {
+			throw new DBException("Connection closed");
+		}
+
+		List<DataObject> propertyList = typeSystem.getPropertyListByTypeID(dataObject.getTypeId());
+		for (DataObject property : propertyList) {
+			// Only deal with modified properties
+			if (dataObject.isModified(property.getId())) {
+				String dataType = property.getString(TypeSystem.PROPERTY_PROPERTY_TYPE_ID);
+				
+				// Update a string value
+				if (dataType.equals(TypeSystem.DATATYPE_STRING)) {
+					try (PreparedStatement valuePs = con.prepareStatement(UPDATE_PROPERTY_STRING_SQL)) {
+						valuePs.setString(1, dataObject.getString(property.getId()));
+						valuePs.setLong(2, dataObject.getId());
+						valuePs.setLong(3, property.getId());
+						valuePs.execute();
+					} catch (SQLException e) {
+						throw new DBException("Exception on update String value", e);
+					}
+				} else {
+					
+					// Update an object value
+					try (PreparedStatement valuePs = con.prepareStatement(UPDATE_PROPERTY_OBJECT_SQL)) {
+						valuePs.setLong(1, dataObject.getObjectId(property.getId()));
+						valuePs.setLong(2, dataObject.getId());
+						valuePs.setLong(3, property.getId());
+						valuePs.execute();
+					} catch (SQLException e) {
+						throw new DBException("Exception on update Object value", e);
+					}					
+				}
+			}
+		}
+		
 	}
 	
 	/*
